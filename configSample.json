@@ -4,5 +4,7 @@
     "fontsFolder" : "Fonts/",
     "iconsFolder" : "Icons/",
     "workingDirectory" : "",
-    "timezone": ""
+    "timezone": "",
+    "units":"metric",
+    "timeFormat":12
 }

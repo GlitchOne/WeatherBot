@@ -144,7 +144,10 @@ iconDict = {"Day":{200:"wi-day-storm-showers.svg",
 803:"wi-cloud.svg",
 804:"wi-cloudy.svg"}}
 
-config = json.load(open('config.json'))
+unitsDict = {"metric":{"temperature":"°C","speed":"m/s"},"imperial":{"temperature":"°F","speed":"mph"}}
+timeFormatDict = {24:"%H:%M",12:"%I %p"}
+
+config = json.load(open('/home/pi/WeatherBot/config.json'))
 
 def invertImage(filename):
     image = Image.open(filename)
@@ -161,18 +164,18 @@ def getTOD(time=datetime.now()):
     utc=pytz.utc
     localTimezone = timezone(config["timezone"])
 
-    if(int(utc.localize(time).astimezone(localTimezone).strftime('%H'))>6 and int(utc.localize(datetime.now()).astimezone(localTimezone).strftime('%H'))<18):
+    if(int(utc.localize(time).astimezone(localTimezone).strftime('%H'))>=6 and int(utc.localize(time).astimezone(localTimezone).strftime('%H'))<=18):
         return "Day"
     else:
         return "Night"
 
 def get_current_weather():
-    url = "https://api.openweathermap.org/data/2.5/weather?id="+config["locationID"]+"&appid="+config["APIKEY"]+"&units=metric"
+    url = "https://api.openweathermap.org/data/2.5/weather?id="+config["locationID"]+"&appid="+config["APIKEY"]+"&units="+config["units"]
     response = requests.post(url)
     return response.json()
 
 def get_forecast():
-    url = "https://api.openweathermap.org/data/2.5/forecast?id="+config["locationID"]+"&appid="+config["APIKEY"]+"&units=metric"
+    url = "https://api.openweathermap.org/data/2.5/forecast?id="+config["locationID"]+"&appid="+config["APIKEY"]+"&units="+config["units"]
     response = requests.post(url)
     return response.json()
 
@@ -198,7 +201,7 @@ def generate_image():
     timeIcon.convert("RGBA")
 
     screenCanvas.paste(weatherIcon, box=(0,0), mask=weatherIcon) # Paste the image onto the canvas, using it's alpha channel as mask
-    screenCanvas.paste(windIcon, box=(200,100), mask=windIcon) # Paste the image onto the canvas, using it's alpha channel as mask
+    screenCanvas.paste(windIcon, box=(220,100), mask=windIcon) # Paste the image onto the canvas, using it's alpha channel as mask
 
     drawCanvas = ImageDraw.Draw(screenCanvas)
 
@@ -207,8 +210,8 @@ def generate_image():
     forecastTempFont = ImageFont.truetype(r'Fonts/OpenSans-Bold.ttf', 40)
     forecastHourFont = ImageFont.truetype(r'Fonts/OpenSans-Light.ttf', 40)
 
-    drawCanvas.text((200, 10), str(int(weatherDetails["main"]["temp"]))+"°C", fill="black", font=currentTempFont)
-    drawCanvas.text((300, 125), str(int(weatherDetails["wind"]["speed"]))+"m/s", fill="black", font=windSpeedFont)
+    drawCanvas.text((220, 10), str(int(weatherDetails["main"]["temp"]))+unitsDict[config["units"]]["temperature"], fill="black", font=currentTempFont)
+    drawCanvas.text((320, 125), str(int(weatherDetails["wind"]["speed"]))+unitsDict[config["units"]]["speed"], fill="black", font=windSpeedFont)
     drawCanvas.text((480, 85), utc.localize(datetime.fromtimestamp(weatherDetails["dt"])).astimezone(localTimezone).strftime('%a'), fill="black", font=forecastTempFont)
     drawCanvas.text((480, 125), utc.localize(datetime.fromtimestamp(weatherDetails["dt"])).astimezone(localTimezone).strftime('%d %b'), fill="black", font=forecastTempFont)
 
@@ -216,8 +219,8 @@ def generate_image():
         svg2png(url="Icons/"+iconDict[getTOD(datetime.fromtimestamp(forecastDetails["list"][position]["dt"]))][forecastDetails["list"][position]["weather"][0]["id"]], write_to="weatherIcon.png", parent_width=100,parent_height=100)
         weatherIcon = Image.open("weatherIcon.png")
         screenCanvas.paste(weatherIcon, box=(160*position+30,200), mask=weatherIcon) # Paste the image onto the canvas, using it's alpha channel as mask
-        drawCanvas.text((160*position+35, 285), str(int(forecastDetails["list"][position]["main"]["temp"]))+"°C", fill="black", font=forecastTempFont)
-        drawCanvas.text((160*position+35, 325), utc.localize(datetime.fromtimestamp(forecastDetails["list"][position]["dt"])).astimezone(localTimezone).strftime('%H:%M'), fill="black", font=forecastHourFont)
+        drawCanvas.text((160*position+30, 275), str(int(forecastDetails["list"][position]["main"]["temp"]))+unitsDict[config["units"]]["temperature"], fill="black", font=forecastTempFont)
+        drawCanvas.text((160*position+30, 315), utc.localize(datetime.fromtimestamp(forecastDetails["list"][position]["dt"])).astimezone(localTimezone).strftime(timeFormatDict[config["timeFormat"]]), fill="black", font=forecastHourFont)
 
     screenCanvas.save("weatherImage.png", format="PNG")
 
