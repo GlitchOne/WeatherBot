@@ -164,12 +164,16 @@ def invertImage(filename):
     final_transparent_image = Image.merge('RGBA', (r2,g2,b2,a))
     final_transparent_image.save(filename)
 
-def getTOD(time=datetime.now()):
-    #Find out whether the specified time given as an argument is daytime or nighttime.
+def getTOD(sunrise=1577858400, sunset=1577901600,time=int(datetime.now().timestamp())):
+    #Find out whether the specified time given as an argument is daytime or nighttime based on sunrise/sunset values.
     utc=pytz.utc
     localTimezone = timezone(config["timezone"])
 
-    if(int(utc.localize(time).astimezone(localTimezone).strftime('%H'))>=6 and int(utc.localize(time).astimezone(localTimezone).strftime('%H'))<=18):
+    sunriseDatetime = datetime.fromtimestamp(sunrise)
+    sunsetDatetime = datetime.fromtimestamp(sunset)
+    currentDatetime = datetime.fromtimestamp(time)
+
+    if(utc.localize(currentDatetime).astimezone(localTimezone).time()>=utc.localize(sunriseDatetime).astimezone(localTimezone).time() and utc.localize(currentDatetime).astimezone(localTimezone).time()<=utc.localize(sunsetDatetime).astimezone(localTimezone).time()):
         return "Day"
     else:
         return "Night"
@@ -208,6 +212,8 @@ def generateWeather():
         weather["icon"] = weatherDetails["weather"][0]["id"]
         weather["temp"] = weatherDetails["main"]["temp"]
         weather["windSpeed"] = weatherDetails["wind"]["speed"]
+        weather["sunrise"] = weatherDetails["sys"]["sunrise"]
+        weather["sunset"] = weatherDetails["sys"]["sunset"]
 
         for position in range(0,4):
             hourDetails = {}
@@ -223,12 +229,14 @@ def generateWeather():
         weather["icon"] = oneCallDetails["current"]["weather"][0]["id"]
         weather["temp"] = oneCallDetails["current"]["temp"]
         weather["windSpeed"] = oneCallDetails["current"]["wind_speed"]
+        weather["sunrise"] = oneCallDetails["current"]["sunrise"]
+        weather["sunset"] = oneCallDetails["current"]["sunset"]
 
         for position in range(0,4):
             hourDetails = {}
-            hourDetails["time"] = oneCallDetails["hourly"][position*config["hourSpacing"]]["dt"]
-            hourDetails["icon"] = oneCallDetails["hourly"][position*config["hourSpacing"]]["weather"][0]["id"]
-            hourDetails["temp"] = oneCallDetails["hourly"][position*config["hourSpacing"]]["temp"]
+            hourDetails["time"] = oneCallDetails["hourly"][position*config["hourSpacing"]+1]["dt"]
+            hourDetails["icon"] = oneCallDetails["hourly"][position*config["hourSpacing"]+1]["weather"][0]["id"]
+            hourDetails["temp"] = oneCallDetails["hourly"][position*config["hourSpacing"]+1]["temp"]
             forecast.append(hourDetails)
 
     completeData = {}
@@ -246,7 +254,7 @@ def generate_image():
     weatherData = generateWeather()
 
     #Use the svg2png module to convert the .svg icons to .png so that they can be added to the image.
-    svg2png(url="Icons/"+iconDict[getTOD(datetime.fromtimestamp(weatherData["current"]["time"]))][weatherData["current"]["icon"]], write_to="weatherIcon.png", parent_width=200,parent_height=200)
+    svg2png(url="Icons/"+iconDict[getTOD(weatherData["current"]["sunrise"], weatherData["current"]["sunset"], weatherData["current"]["time"])][weatherData["current"]["icon"]], write_to="weatherIcon.png", parent_width=200,parent_height=200)
     svg2png(url="Icons/wi-time-4.svg", write_to="timeIcon.png", parent_width=60,parent_height=60)
     svg2png(url="Icons/wi-strong-wind.svg", write_to="windIcon.png", parent_width=100,parent_height=100)
 
@@ -275,9 +283,8 @@ def generate_image():
     drawCanvas.text((470, 75), utc.localize(datetime.fromtimestamp(weatherData["current"]["time"])).astimezone(localTimezone).strftime('%a'), fill="black", font=forecastTempFont)
     drawCanvas.text((470, 115), utc.localize(datetime.fromtimestamp(weatherData["current"]["time"])).astimezone(localTimezone).strftime('%d %b'), fill="black", font=forecastTempFont)
 
-
     for position in range(0,4):
-        svg2png(url="Icons/"+iconDict[getTOD(datetime.fromtimestamp(weatherData["forecast"][position]["time"]))][weatherData["forecast"][position]["icon"]], write_to="weatherIcon.png", parent_width=100,parent_height=100)
+        svg2png(url="Icons/"+iconDict[getTOD(weatherData["current"]["sunrise"], weatherData["current"]["sunset"], weatherData["forecast"][position]["time"])][weatherData["forecast"][position]["icon"]], write_to="weatherIcon.png", parent_width=100,parent_height=100)
         weatherIcon = Image.open("weatherIcon.png")
         screenCanvas.paste(weatherIcon, box=(160*position+30,200), mask=weatherIcon)
         drawCanvas.text((160*position+30, 275), str(int(weatherData["forecast"][position]["temp"]))+unitsDict[config["units"]]["temperature"], fill="black", font=forecastTempFont)
