@@ -1,6 +1,10 @@
 {
     "locationID" : "",
+    "lon":48.52,
+    "lat":123.23,
     "APIKEY" : "",
+    "APITYPE": 0,
+    "hourSpacing":3,
     "fontsFolder" : "Fonts/",
     "iconsFolder" : "Icons/",
     "workingDirectory" : "",
